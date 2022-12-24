@@ -440,8 +440,10 @@ if(!class_exists("ShopMeBase")) {
             return $obj->_CheckWPPlugin($purchase_key, $error, $responseObj);
         }
         final function _removeWPPluginLicense(&$message=''){
-            update_option("ShopMe_lic_Key","xxxxxxxx-xxxxxxxx");
-            update_option("ShopMe_lic_email","mail@mail.com");
+            global $current_user;
+            $current_user = wp_get_current_user();
+            update_option("ShopMe_lic_Key", $_SERVER['SERVER_NAME']);
+            update_option("ShopMe_lic_email", $current_user->user_email);
             update_option('ShopMe_lic_Key_Approved', true);
             return false;
         }
@@ -456,83 +458,11 @@ if(!class_exists("ShopMeBase")) {
         final function _CheckWPPlugin( $purchase_key, &$error = "", &$responseObj = null ) {
             $responseObj           = new stdClass();
             $responseObj->is_valid = true;
-            $responseObj->expire_date   = '10.10.2030';
-            $responseObj->support_end   = '10.10.2030';
+            $responseObj->expire_date   = '00.00.0000';
+            $responseObj->support_end   = '00.00.0000';
             $responseObj->license_title = 'Standart';
-            $responseObj->license_key   = 'babak';
+            $responseObj->license_key   = $_SERVER['SERVER_NAME'];
             return true;
-            if(empty($purchase_key)){
-                $this->removeOldWPResponse();
-                $error="";
-                return false;
-            }
-            $oldRespons=$this->getOldWPResponse();
-            $isForce=false;
-            if(!empty($oldRespons)) {
-                if ( ! empty( $oldRespons->expire_date ) && strtolower( $oldRespons->expire_date ) != "no expiry" && strtotime( $oldRespons->expire_date ) < time() ) {
-                    $isForce = true;
-                }
-                if ( ! $isForce && ! empty( $oldRespons->is_valid ) && $oldRespons->next_request > time() && ( ! empty( $oldRespons->license_key ) && $purchase_key == $oldRespons->license_key ) ) {
-                    $responseObj = clone $oldRespons;
-                    unset( $responseObj->next_request );
-
-                    return true;
-                }
-            }
-
-            $param    = $this->getParam( $purchase_key, $this->version );
-            $response = $this->_request( 'product/active/'.$this->product_id, $param, $error );
-            if(empty($response->is_request_error)) {
-                if ( empty( $response->code ) ) {
-                    if ( ! empty( $response->status ) ) {
-                        if ( ! empty( $response->data ) ) {
-                            $serialObj = $this->decrypt( $response->data, $param->domain );
-
-                            $licenseObj = unserialize( $serialObj );
-                            if ( $licenseObj->is_valid ) {
-                                $responseObj           = new stdClass();
-                                $responseObj->is_valid = $licenseObj->is_valid;
-                                if ( $licenseObj->request_duration > 0 ) {
-                                    $responseObj->next_request = strtotime( "+ {$licenseObj->request_duration} hour" );
-                                } else {
-                                    $responseObj->next_request = time();
-                                }
-                                $responseObj->expire_date   = $licenseObj->expire_date;
-                                $responseObj->support_end   = $licenseObj->support_end;
-                                $responseObj->license_title = $licenseObj->license_title;
-                                $responseObj->license_key   = $purchase_key;
-                                $responseObj->msg           = $response->msg;
-                                $this->SaveWPResponse( $responseObj );
-                                unset( $responseObj->next_request );
-
-                                return true;
-                            } else {
-                                if ( $this->__checkoldtied( $oldRespons, $responseObj, $response ) ) {
-                                    return true;
-                                } else {
-                                    $this->removeOldWPResponse();
-                                    $error = ! empty( $response->msg ) ? $response->msg : "";
-                                }
-                            }
-                        } else {
-                            $error = "Invalid data";
-                        }
-
-                    } else {
-                        $error = $response->msg;
-                    }
-                } else {
-                    $error = $response->message;
-                }
-            }else{
-                if ( $this->__checkoldtied( $oldRespons, $responseObj, $response ) ) {
-                    return true;
-                } else {
-                    $this->removeOldWPResponse();
-                    $error = ! empty( $response->msg ) ? $response->msg : "";
-                }
-            }
-            return $this->__checkoldtied($oldRespons,$responseObj);
         }
         private function __checkoldtied(&$oldRespons,&$responseObj){
             if(!empty($oldRespons) && (empty($oldRespons->tried) || $oldRespons->tried<=2)){
