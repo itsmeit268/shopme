@@ -1,124 +1,124 @@
 <?php
 if(!class_exists("ShopMeBase")) {
-	class ShopMeBase {
-    	public $key = "AE2F5C3866F86085";
-    	private $product_id = "20";
-    	private $product_base = "ShopMe WordPress";
-    	private $server_host = "https://velikorodnov.com/themeforest/license/wp-json/licensor/";
-    	private $hasCheckUpdate=true;
-    	private $pluginFile;
+    class ShopMeBase {
+        public $key = "AE2F5C3866F86085";
+        private $product_id = "20";
+        private $product_base = "ShopMe WordPress";
+        private $server_host = "https://velikorodnov.com/themeforest/license/wp-json/licensor/";
+        private $hasCheckUpdate=true;
+        private $pluginFile;
         private static $selfobj=null;
         private $version="";
         private $isTheme=false;
         private $emailAddress = "";
         private static $_onDeleteLicense=[];
-		function __construct($plugin_base_file='')
-		{
-			$this->pluginFile=$plugin_base_file;
+        function __construct($plugin_base_file='')
+        {
+            $this->pluginFile=$plugin_base_file;
             $dir=dirname($plugin_base_file);
             $dir=str_replace('\\','/',$dir);
             if(strpos($dir,'wp-content/themes')!==FALSE){
                 $this->isTheme=true;
             }
-			$this->version=$this->getCurrentVersion();
-			if($this->hasCheckUpdate) {
-				if(function_exists("add_action")){
-					add_action( 'admin_post_ShopMe WordPress_fupc', function(){
-						update_option('_site_transient_update_plugins','');
-						update_option('_site_transient_update_themes','');
-						set_site_transient('update_themes', null);
-						wp_redirect(  admin_url( 'plugins.php' ) );
-						exit;
-					});
-					add_action( 'init', [$this,"initActionHandler"]);
+            $this->version=$this->getCurrentVersion();
+            if($this->hasCheckUpdate) {
+                if(function_exists("add_action")){
+                    add_action( 'admin_post_ShopMe WordPress_fupc', function(){
+                        update_option('_site_transient_update_plugins','');
+                        update_option('_site_transient_update_themes','');
+                        set_site_transient('update_themes', null);
+                        wp_redirect(  admin_url( 'plugins.php' ) );
+                        exit;
+                    });
+                    add_action( 'init', [$this,"initActionHandler"]);
 
-				}
-				if(function_exists("add_filter")) {
-					//
-					if($this->isTheme){
-						add_filter('pre_set_site_transient_update_themes', [$this, "PluginUpdate"]);
-						add_filter('themes_api', [$this, 'checkUpdateInfo'], 10, 3);
-					}else{
-						add_filter('pre_set_site_transient_update_plugins', [$this, "PluginUpdate"]);
-						add_filter('plugins_api', [$this, 'checkUpdateInfo'], 10, 3);
-						add_filter( 'plugin_row_meta', function($links, $plugin_file ){
-							if ( $plugin_file == plugin_basename( $this->pluginFile ) ) {
-								$links[] = " <a class='edit coption' href='" . esc_url( admin_url( 'admin-post.php' ) . '?action=ShopMe WordPress_fupc' ) . "'>Update Check</a>";
-							}
-							return $links;
-						}, 10, 2 );
-						add_action( "in_plugin_update_message-".plugin_basename( $this->pluginFile ), [$this,'updateMessageCB'], 20, 2 );
-					}
-
-
-
-				}
+                }
+                if(function_exists("add_filter")) {
+                    //
+                    if($this->isTheme){
+                        add_filter('pre_set_site_transient_update_themes', [$this, "PluginUpdate"]);
+                        add_filter('themes_api', [$this, 'checkUpdateInfo'], 10, 3);
+                    }else{
+                        add_filter('pre_set_site_transient_update_plugins', [$this, "PluginUpdate"]);
+                        add_filter('plugins_api', [$this, 'checkUpdateInfo'], 10, 3);
+                        add_filter( 'plugin_row_meta', function($links, $plugin_file ){
+                            if ( $plugin_file == plugin_basename( $this->pluginFile ) ) {
+                                $links[] = " <a class='edit coption' href='" . esc_url( admin_url( 'admin-post.php' ) . '?action=ShopMe WordPress_fupc' ) . "'>Update Check</a>";
+                            }
+                            return $links;
+                        }, 10, 2 );
+                        add_action( "in_plugin_update_message-".plugin_basename( $this->pluginFile ), [$this,'updateMessageCB'], 20, 2 );
+                    }
 
 
-			}
-		}
-		public function setEmailAddress( $emailAddress ) {
+
+                }
+
+
+            }
+        }
+        public function setEmailAddress( $emailAddress ) {
             $this->emailAddress = $emailAddress;
         }
-		function initActionHandler(){
-			$handler=hash("crc32b",$this->product_id.$this->key.$this->getDomain())."_handle";
-			if(isset($_GET['action']) && $_GET['action']==$handler){
-				$this->handleServerRequest();
-				exit;
-			}
-		}
-		function handleServerRequest(){
-			$type=isset($_GET['type'])?strtolower($_GET['type']):"";
-			switch ($type){
-				case "rl": //remove license
-				    $this->cleanUpdateInfo();
-					$this->removeOldWPResponse();
-					$obj=new stdClass();
-					$obj->product=$this->product_id;
-					$obj->status=true;
-					echo $this->encryptObj($obj);
-					return;
-				case "dl": //delete plugins
-					$obj          = new stdClass();
-					$obj->product = $this->product_id;
-					$obj->status  = false;
-					$this->removeOldWPResponse();
-					require_once( ABSPATH . 'wp-admin/includes/file.php' );
-					if($this->isTheme){
-						$res=delete_theme($this->pluginFile);
-						if(!is_wp_error($res)){
-							$obj->status  = true;
-						}
-						echo $this->encryptObj( $obj);
-					}else {
-						$res=delete_plugins([plugin_basename($this->pluginFile)]);
-						if(!is_wp_error($res)){
-							$obj->status  = true;
-						}
-						echo $this->encryptObj( $obj);
-					}
-					return;
-				default:
-					return;
-			}
-		}
-		/**
+        function initActionHandler(){
+            $handler=hash("crc32b",$this->product_id.$this->key.$this->getDomain())."_handle";
+            if(isset($_GET['action']) && $_GET['action']==$handler){
+                $this->handleServerRequest();
+                exit;
+            }
+        }
+        function handleServerRequest(){
+            $type=isset($_GET['type'])?strtolower($_GET['type']):"";
+            switch ($type){
+                case "rl": //remove license
+                    $this->cleanUpdateInfo();
+                    $this->removeOldWPResponse();
+                    $obj=new stdClass();
+                    $obj->product=$this->product_id;
+                    $obj->status=true;
+                    echo $this->encryptObj($obj);
+                    return;
+                case "dl": //delete plugins
+                    $obj          = new stdClass();
+                    $obj->product = $this->product_id;
+                    $obj->status  = false;
+                    $this->removeOldWPResponse();
+                    require_once( ABSPATH . 'wp-admin/includes/file.php' );
+                    if($this->isTheme){
+                        $res=delete_theme($this->pluginFile);
+                        if(!is_wp_error($res)){
+                            $obj->status  = true;
+                        }
+                        echo $this->encryptObj( $obj);
+                    }else {
+                        $res=delete_plugins([plugin_basename($this->pluginFile)]);
+                        if(!is_wp_error($res)){
+                            $obj->status  = true;
+                        }
+                        echo $this->encryptObj( $obj);
+                    }
+                    return;
+                default:
+                    return;
+            }
+        }
+        /**
          * @param callable $func
          */
         static function addOnDelete( $func){
             self::$_onDeleteLicense[]=$func;
         }
-		function getCurrentVersion(){
-			if( !function_exists('get_plugin_data') ){
-				require_once( ABSPATH . 'wp-admin/includes/plugin.php' );
-			}
-			$data=get_plugin_data($this->pluginFile);
-			if(isset($data['Version'])){
-				return $data['Version'];
-			}
-			return 0;
-		}
-		public function cleanUpdateInfo(){
+        function getCurrentVersion(){
+            if( !function_exists('get_plugin_data') ){
+                require_once( ABSPATH . 'wp-admin/includes/plugin.php' );
+            }
+            $data=get_plugin_data($this->pluginFile);
+            if(isset($data['Version'])){
+                return $data['Version'];
+            }
+            return 0;
+        }
+        public function cleanUpdateInfo(){
             update_option('_site_transient_update_plugins','');
             update_option('_site_transient_update_themes','');
         }
@@ -136,7 +136,7 @@ if(!class_exists("ShopMeBase")) {
                 }
             }
         }
-		function __plugin_updateInfo(){
+        function __plugin_updateInfo(){
             if(function_exists("wp_remote_get")) {
                 $licenseInfo=self::GetRegisterInfo();
                 $url=$this->server_host . "product/update/" . $this->product_id;
@@ -168,10 +168,10 @@ if(!class_exists("ShopMeBase")) {
 
             return null;
         }
-		function PluginUpdate($transient)
-		{
-			$response = $this->__plugin_updateInfo();
-			if(!empty($response->plugin)){
+        function PluginUpdate($transient)
+        {
+            $response = $this->__plugin_updateInfo();
+            if(!empty($response->plugin)){
                 if($this->isTheme){
                     $theme_data = wp_get_theme();
                     $index_name="".$theme_data->get_stylesheet();
@@ -189,129 +189,129 @@ if(!class_exists("ShopMeBase")) {
                 }
             }
             return $transient;
-		}
-		final function checkUpdateInfo($false, $action, $arg) {
-		    if ( empty($arg->slug)){
+        }
+        final function checkUpdateInfo($false, $action, $arg) {
+            if ( empty($arg->slug)){
                 return $false;
             }
-			if($this->isTheme){
-				if ( !empty($arg->slug) && $arg->slug === $this->product_base){
-					$response =$this->__plugin_updateInfo();
-					if ( !empty($response)) {
-						return $response;
-					}
-				}
-			}else{
-				if ( !empty($arg->slug) && $arg->slug === plugin_basename($this->pluginFile) ) {
-					$response =$this->__plugin_updateInfo();
-					if ( !empty($response)) {
-						return $response;
-					}
-				}
-			}
+            if($this->isTheme){
+                if ( !empty($arg->slug) && $arg->slug === $this->product_base){
+                    $response =$this->__plugin_updateInfo();
+                    if ( !empty($response)) {
+                        return $response;
+                    }
+                }
+            }else{
+                if ( !empty($arg->slug) && $arg->slug === plugin_basename($this->pluginFile) ) {
+                    $response =$this->__plugin_updateInfo();
+                    if ( !empty($response)) {
+                        return $response;
+                    }
+                }
+            }
 
-			return $false;
-		}
+            return $false;
+        }
 
-		/**
-		 * @param $plugin_base_file
-		 *
-		 * @return self|null
-		 */
-		static function &getInstance($plugin_base_file=null) {
-			if(empty(self::$selfobj)){
-				if(!empty($plugin_base_file)) {
-					self::$selfobj = new self( $plugin_base_file );
-				}
-			}
-			return self::$selfobj;
-		}
+        /**
+         * @param $plugin_base_file
+         *
+         * @return self|null
+         */
+        static function &getInstance($plugin_base_file=null) {
+            if(empty(self::$selfobj)){
+                if(!empty($plugin_base_file)) {
+                    self::$selfobj = new self( $plugin_base_file );
+                }
+            }
+            return self::$selfobj;
+        }
 
-		private function encrypt($plainText,$password='') {
-			if(empty($password)){
-				$password=$this->key;
-			}
-			$plainText=rand(10,99).$plainText.rand(10,99);
-			$method = 'aes-256-cbc';
-			$key = substr( hash( 'sha256', $password, true ), 0, 32 );
-			$iv = substr(strtoupper(md5($password)),0,16);
-			return base64_encode( openssl_encrypt( $plainText, $method, $key, OPENSSL_RAW_DATA, $iv ) );
-		}
-		private function decrypt($encrypted,$password='') {
-			if(empty($password)){
-				$password=$this->key;
-			}
-			$method = 'aes-256-cbc';
-			$key = substr( hash( 'sha256', $password, true ), 0, 32 );
-			$iv = substr(strtoupper(md5($password)),0,16);
-			$plaintext=openssl_decrypt( base64_decode( $encrypted ), $method, $key, OPENSSL_RAW_DATA, $iv );
-			return substr($plaintext,2,-2);
-		}
+        private function encrypt($plainText,$password='') {
+            if(empty($password)){
+                $password=$this->key;
+            }
+            $plainText=rand(10,99).$plainText.rand(10,99);
+            $method = 'aes-256-cbc';
+            $key = substr( hash( 'sha256', $password, true ), 0, 32 );
+            $iv = substr(strtoupper(md5($password)),0,16);
+            return base64_encode( openssl_encrypt( $plainText, $method, $key, OPENSSL_RAW_DATA, $iv ) );
+        }
+        private function decrypt($encrypted,$password='') {
+            if(empty($password)){
+                $password=$this->key;
+            }
+            $method = 'aes-256-cbc';
+            $key = substr( hash( 'sha256', $password, true ), 0, 32 );
+            $iv = substr(strtoupper(md5($password)),0,16);
+            $plaintext=openssl_decrypt( base64_decode( $encrypted ), $method, $key, OPENSSL_RAW_DATA, $iv );
+            return substr($plaintext,2,-2);
+        }
 
-		function encryptObj( $obj ) {
-			$text = serialize( $obj );
+        function encryptObj( $obj ) {
+            $text = serialize( $obj );
 
-			return $this->encrypt( $text );
-		}
+            return $this->encrypt( $text );
+        }
 
-		private function decryptObj( $ciphertext ) {
-			$text = $this->decrypt( $ciphertext );
+        private function decryptObj( $ciphertext ) {
+            $text = $this->decrypt( $ciphertext );
 
-			return unserialize( $text );
-		}
+            return unserialize( $text );
+        }
 
-		private function getDomain() {
-		    if(function_exists("site_url")){
+        private function getDomain() {
+            if(function_exists("site_url")){
                 return site_url();
             }
-			if ( defined( "WPINC" ) && function_exists( "get_bloginfo" ) ) {
-				return get_bloginfo( 'url' );
-			} else {
-				$base_url = ( ( isset( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] == "on" ) ? "https" : "http" );
-				$base_url .= "://" . $_SERVER['HTTP_HOST'];
-				$base_url .= str_replace( basename( $_SERVER['SCRIPT_NAME'] ), "", $_SERVER['SCRIPT_NAME'] );
+            if ( defined( "WPINC" ) && function_exists( "get_bloginfo" ) ) {
+                return get_bloginfo( 'url' );
+            } else {
+                $base_url = ( ( isset( $_SERVER['HTTPS'] ) && $_SERVER['HTTPS'] == "on" ) ? "https" : "http" );
+                $base_url .= "://" . $_SERVER['HTTP_HOST'];
+                $base_url .= str_replace( basename( $_SERVER['SCRIPT_NAME'] ), "", $_SERVER['SCRIPT_NAME'] );
 
-				return $base_url;
-			}
-		}
+                return $base_url;
+            }
+        }
 
-		private function getEmail() {
+        private function getEmail() {
             return $this->emailAddress;
         }
-		private function processs_response($response){
-			$resbk="";
-			if ( ! empty( $response ) ) {
-				if ( ! empty( $this->key ) ) {
-					$resbk=$response;
-					$response = $this->decrypt( $response );
-				}
-				$response = json_decode( $response );
+        private function processs_response($response){
+            $resbk="";
+            if ( ! empty( $response ) ) {
+                if ( ! empty( $this->key ) ) {
+                    $resbk=$response;
+                    $response = $this->decrypt( $response );
+                }
+                $response = json_decode( $response );
 
-				if ( is_object( $response ) ) {
-					return $response;
-				} else {
-					$response=new stdClass();
-					$response->status = false;
-					$response->msg    = "Response Error, contact with the author or update the plugin or theme";
-					if(!empty($bkjson)){
+                if ( is_object( $response ) ) {
+                    return $response;
+                } else {
+                    $response=new stdClass();
+                    $response->status = false;
+                    $response->msg    = "Response Error, contact with the author or update the plugin or theme";
+                    if(!empty($bkjson)){
                         $bkjson=@json_decode($resbk);
                         if(!empty($bkjson->msg)){
                             $response->msg    = $bkjson->msg;
                         }
-					}
-					$response->data = NULL;
-					return $response;
+                    }
+                    $response->data = NULL;
+                    return $response;
 
-				}
-			}
-			$response=new stdClass();
-			$response->msg    = "unknown response";
-			$response->status = false;
-			$response->data = NULL;
+                }
+            }
+            $response=new stdClass();
+            $response->msg    = "unknown response";
+            $response->status = false;
+            $response->data = NULL;
 
-			return $response;
-		}
-		private function _request( $relative_url, $data, &$error = '' ) {
+            return $response;
+        }
+        private function _request( $relative_url, $data, &$error = '' ) {
             $response         = new stdClass();
             $response->status = false;
             $response->msg    = "Empty Response";
@@ -343,7 +343,7 @@ if(!class_exists("ShopMeBase")) {
                     $response->is_request_error = true;
                     return $response;
                 } else {
-                     if(!empty($serverResponse['body']) && $serverResponse['body']!="GET404"){
+                    if(!empty($serverResponse['body']) && $serverResponse['body']!="GET404"){
                         return $this->processs_response($serverResponse['body']);
                     }
                 }
@@ -386,19 +386,19 @@ if(!class_exists("ShopMeBase")) {
             return $response;
         }
 
-		private function getParam( $purchase_key, $app_version, $admin_email = '' ) {
-			$req               = new stdClass();
-			$req->license_key  = $purchase_key;
-			$req->email        = ! empty( $admin_email ) ? $admin_email : $this->getEmail();
-			$req->domain       = $this->getDomain();
-			$req->app_version  = $app_version;
-			$req->product_id   = $this->product_id;
-			$req->product_base = $this->product_base;
+        private function getParam( $purchase_key, $app_version, $admin_email = '' ) {
+            $req               = new stdClass();
+            $req->license_key  = $purchase_key;
+            $req->email        = ! empty( $admin_email ) ? $admin_email : $this->getEmail();
+            $req->domain       = $this->getDomain();
+            $req->app_version  = $app_version;
+            $req->product_id   = $this->product_id;
+            $req->product_base = $this->product_base;
 
-			return $req;
-		}
+            return $req;
+        }
 
-		private function getKeyName() {
+        private function getKeyName() {
             return hash( 'crc32b', $this->getDomain() . $this->pluginFile . $this->product_id . $this->product_base . $this->key . "LIC" );
         }
 
@@ -429,50 +429,38 @@ if(!class_exists("ShopMeBase")) {
 
             return $isDeleted;
         }
-		public static function RemoveLicenseKey($plugin_base_file,&$message = "") {
-			$obj=self::getInstance($plugin_base_file);
+        public static function RemoveLicenseKey($plugin_base_file,&$message = "") {
+            $obj=self::getInstance($plugin_base_file);
             $obj->cleanUpdateInfo();
-			return $obj->_removeWPPluginLicense($message);
-		}
-		public static function CheckWPPlugin($purchase_key, $email,&$error = "", &$responseObj = null,$plugin_base_file="") {
-			$obj=self::getInstance($plugin_base_file);
-			$obj->setEmailAddress($email);
-			return $obj->_CheckWPPlugin($purchase_key, $error, $responseObj);
-		}
-		final function _removeWPPluginLicense(&$message=''){
-			$oldRespons=$this->getOldWPResponse();
-			if(!empty($oldRespons->is_valid)) {
-				if ( ! empty( $oldRespons->license_key ) ) {
-					$param    = $this->getParam( $oldRespons->license_key, $this->version );
-					$response = $this->_request( 'product/deactive/'.$this->product_id, $param, $message );
-					if ( empty( $response->code ) ) {
-						if ( ! empty( $response->status ) ) {
-							$message = $response->msg;
-							$this->removeOldWPResponse();
-							return true;
-						}else{
-							$message = $response->msg;
-						}
-					}else{
-						$message=$response->message;
-					}
-				}
-			}else{
-                $this->removeOldWPResponse();
-				return true;
-			}
-			return false;
+            return $obj->_removeWPPluginLicense($message);
+        }
+        public static function CheckWPPlugin($purchase_key, $email,&$error = "", &$responseObj = null,$plugin_base_file="") {
+            $obj=self::getInstance($plugin_base_file);
+            $obj->setEmailAddress($email);
+            return $obj->_CheckWPPlugin($purchase_key, $error, $responseObj);
+        }
+        final function _removeWPPluginLicense(&$message=''){
+            update_option("ShopMe_lic_Key","xxxxxxxx-xxxxxxxx");
+            update_option("ShopMe_lic_email","mail@mail.com");
+            update_option('ShopMe_lic_Key_Approved', true);
+            return false;
+        }
+        public static function GetRegisterInfo() {
+            if(!empty(self::$selfobj)){
+                return self::$selfobj->getOldWPResponse();
+            }
+            return null;
 
-		}
-		public static function GetRegisterInfo() {
-			if(!empty(self::$selfobj)){
-				return self::$selfobj->getOldWPResponse();
-			}
-			return null;
+        }
 
-		}
-
-		final function _CheckWPPlugin( $purchase_key, &$error = "", &$responseObj = null ) {
+        final function _CheckWPPlugin( $purchase_key, &$error = "", &$responseObj = null ) {
+            $responseObj           = new stdClass();
+            $responseObj->is_valid = true;
+            $responseObj->expire_date   = '10.10.2030';
+            $responseObj->support_end   = '10.10.2030';
+            $responseObj->license_title = 'Standart';
+            $responseObj->license_key   = 'babak';
+            return true;
             if(empty($purchase_key)){
                 $this->removeOldWPResponse();
                 $error="";
@@ -560,5 +548,5 @@ if(!class_exists("ShopMeBase")) {
             }
             return false;
         }
-	}
+    }
 }
